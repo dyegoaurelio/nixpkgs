@@ -72,7 +72,7 @@ maven.buildMavenPackage {
 
   meta = with lib; {
     description = "Magic: the Gathering card game with rules enforcement";
-    homepage = "https://www.slightlymagic.net/forum/viewforum.php?f=26";
+    homepage = "https://card-forge.github.io/forge";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ eigengrau ];
   };
