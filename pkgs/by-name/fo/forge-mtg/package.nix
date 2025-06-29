@@ -7,6 +7,8 @@
   makeWrapper,
   openjdk,
   libGL,
+  makeDesktopItem,
+  imagemagick,
 }:
 
 let
@@ -23,7 +25,7 @@ let
   patches = [ ./no-launch4j.patch ];
 
 in
-maven.buildMavenPackage {
+maven.buildMavenPackage rec {
   pname = "forge-mtg";
   inherit version src patches;
 
@@ -31,7 +33,43 @@ maven.buildMavenPackage {
 
   doCheck = false; # Needs a running Xorg
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [
+    makeWrapper
+    imagemagick
+  ];
+  desktopItem = makeDesktopItem {
+    name = "forge";
+    exec = "forge";
+    actions = {
+      forge-adventure = {
+        exec = "forge-adventure";
+        name = "Play Adventure";
+      };
+      forge-adventure-editor = {
+        exec = "forge-adventure-editor";
+        name = "Adventure Editor";
+      };
+      forge-classic = {
+        exec = "forge";
+        name = "Play Classic";
+      };
+    };
+    icon = "forge-mtg";
+    comment = "Magic: the Gathering card game with rules enforcement";
+    desktopName = "Forge MTG";
+    genericName = "Card Game";
+    categories = [
+      "Game"
+      "BoardGame"
+    ];
+    keywords = [
+      "Magic"
+      "MTG"
+      "Card Game"
+      "Trading Card Game"
+      "TCG"
+    ];
+  };
 
   installPhase = ''
     runHook preInstall
@@ -45,6 +83,13 @@ maven.buildMavenPackage {
       forge-gui/res \
       $out/share/forge
     cp adventure-editor/target/adventure-editor.sh $out/share/forge/forge-adventure-editor.sh
+
+    mkdir -p $out/share/applications
+    cp ${desktopItem}/share/applications/* $out/share/applications/
+
+    mkdir -p $out/share/icons/hicolor/128x128/apps
+    convert AppIcon.png -resize 128x128 $out/share/icons/hicolor/128x128/apps/forge-mtg.png
+
     runHook postInstall
   '';
 
