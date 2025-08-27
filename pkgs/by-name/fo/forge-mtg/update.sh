@@ -5,32 +5,46 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-check_launch4j_in_pom() {
+download_and_extract_source() {
+    local version="$1"
+    local temp_dir=$(mktemp -d)
+    
+    curl -L "https://github.com/Card-Forge/forge/archive/forge-$version.tar.gz" | tar -xz -C "$temp_dir"
+    
+    echo "$temp_dir/forge-forge-$version"
+}
+
+check_plugin_in_pom() {
     local pom_file="$1"
+    local plugin_name="$2"
     if [[ -f "$pom_file" ]]; then
-        grep -q "com.akathist.maven.plugins.launch4j" "$pom_file" 2>/dev/null
+        grep -q "<artifactId>$plugin_name</artifactId>" "$pom_file" 2>/dev/null
     else
         return 1
     fi
 }
 
 update_patch() {
-    local version="$1"
+    local source_dir="$1"
+    local plugin_name="$2"
+    local patch_file="$3"
+    
+    if [[ ! -d "$source_dir" ]]; then
+        echo "Source directory $source_dir does not exist!"
+        exit 1
+    fi
+    
     local temp_dir=$(mktemp -d)
-    
-    echo "Downloading forge source version $version to check for launch4j plugins..."
-    curl -L "https://github.com/Card-Forge/forge/archive/forge-$version.tar.gz" | tar -xz -C "$temp_dir"
-    local source_dir="$temp_dir/forge-forge-$version"
-    
-    # Check if we need to update the patch
-    local needs_update=false
+    local plugin_found=false
     local patch_content=""
     
-    # Find all pom.xml files that contain launch4j plugin
+    echo "Checking for $plugin_name in pom.xml files..."
+    
+    # Find all pom.xml files that contain the specified plugin
     while IFS= read -r -d '' pom_file; do
-        if check_launch4j_in_pom "$pom_file"; then
-            needs_update=true
-            echo "Found launch4j plugin in: $pom_file"
+        if check_plugin_in_pom "$pom_file" "$plugin_name"; then
+            plugin_found=true
+            echo "Found $plugin_name in: $pom_file"
             
             # Generate patch content for this file
             local relative_path=$(echo "$pom_file" | sed "s|^$source_dir/||")
@@ -40,8 +54,8 @@ update_patch() {
             cp "$pom_file" "$temp_original"
             cp "$pom_file" "$temp_patched"
             
-            # Remove launch4j plugin sections using the dedicated script
-            python3 "$SCRIPT_DIR/erase-plugin.py" "$temp_patched" "launch4j-maven-plugin"
+            # Remove plugin sections using the dedicated script
+            python3 "$SCRIPT_DIR/erase-plugin.py" "$temp_patched" "$plugin_name"
             
             # Generate diff for this file
             if ! cmp -s "$temp_original" "$temp_patched"; then
@@ -53,37 +67,30 @@ update_patch() {
         fi
     done < <(find "$source_dir" -name "pom.xml" -print0)
     
-    if [[ "$needs_update" == "true" && -n "$patch_content" ]]; then
-        echo "Updating no-launch4j.patch..."
-        echo "$patch_content" > "$SCRIPT_DIR/no-launch4j.patch"
+    if [[ "$plugin_found" == "true" && -n "$patch_content" ]]; then
+        echo "Updating $patch_file..."
+        echo "$patch_content" > "$SCRIPT_DIR/$patch_file"
         echo "Patch updated successfully!"
+        rm -rf "$temp_dir"
+        exit 0
     else
-        echo "No launch4j plugins found or patch is already up to date."
+        echo "No $plugin_name found on any pom.xml files. Patch not updated."
+        rm -rf "$temp_dir"
+        exit 1
     fi
-    
-    rm -rf "$temp_dir"
 }
 
 echo "Updating forge-mtg package..."
 
-# Get current version from package.nix for patch generation
-current_version=$(grep 'version = ' "$SCRIPT_DIR/package.nix" | sed 's/.*"\(.*\)".*/\1/')
-echo "Current version: $current_version"
-
-# First, let nix-update handle version and hash updates
-echo "Running nix-update to check for version updates..."
 nix-update --version-regex=forge-'(.*)' forge-mtg
 
 # Get the potentially updated version
-new_version=$(grep 'version = ' "$SCRIPT_DIR/package.nix" | sed 's/.*"\(.*\)".*/\1/')
+version=$(grep 'version = ' "$SCRIPT_DIR/package.nix" | sed 's/.*"\(.*\)".*/\1/')
 
-# Update the patch (either for current or new version)
-if [[ "$current_version" != "$new_version" ]]; then
-    echo "Version updated from $current_version to $new_version, updating patch..."
-    update_patch "$new_version"
-else
-    echo "No version change, checking if patch needs updating..."
-    update_patch "$current_version"
-fi
+source_dir=$(download_and_extract_source "$version")
+
+update_patch "$source_dir" "launch4j-maven-plugin" "no-launch4j.patch"
+
+rm -rf "$(dirname "$source_dir")"
 
 echo "Update complete!"
