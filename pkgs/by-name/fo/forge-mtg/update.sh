@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell --pure -i bash -p curl cacert nix-update jq gnused python3 git
+#!nix-shell --pure -i bash -p curl cacert nix-update jq gnused git
 
 set -euo pipefail
 
@@ -28,6 +28,44 @@ check_plugin_in_pom() {
     else
         return 1
     fi
+}
+
+remove_plugin_from_pom() {
+    local pom_file="$1"
+    local plugin_name="$2"
+    
+    if [[ ! -f "$pom_file" ]]; then
+        echo "Error: $pom_file does not exist" >&2
+        return 1
+    fi
+    
+    awk -v plugin="$plugin_name" '
+    /<plugin>/ { 
+        plugin_block = $0 "\n"
+        in_plugin = 1
+        skip = 0
+        next
+    }
+    in_plugin && /<\/plugin>/ {
+        plugin_block = plugin_block $0 "\n"
+        if (!skip) {
+            printf "%s", plugin_block
+        }
+        in_plugin = 0
+        plugin_block = ""
+        next
+    }
+    in_plugin {
+        plugin_block = plugin_block $0 "\n"
+        if (/<artifactId>/ && index($0, plugin) > 0) {
+            skip = 1
+        }
+        next
+    }
+    !in_plugin { print }
+    ' "$pom_file" > "$pom_file.tmp" && mv "$pom_file.tmp" "$pom_file"
+    
+    echo "Removed plugin blocks with artifactId '$plugin_name' from $pom_file"
 }
 
 update_patch() {
@@ -60,8 +98,7 @@ update_patch() {
             cp "$pom_file" "$temp_original"
             cp "$pom_file" "$temp_patched"
             
-            # Remove plugin sections using the dedicated script
-            python3 "$SCRIPT_DIR/erase-pom-plugin.py" "$temp_patched" "$plugin_name"
+            remove_plugin_from_pom "$temp_patched" "$plugin_name"
             
             # Generate diff for this file
             if ! cmp -s "$temp_original" "$temp_patched"; then
