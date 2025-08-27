@@ -1,8 +1,7 @@
 diff --git a/forge-gui-desktop/pom.xml b/forge-gui-desktop/pom.xml
-index dfe902e6b9..6fe3382f27 100644
 --- a/forge-gui-desktop/pom.xml
 +++ b/forge-gui-desktop/pom.xml
-@@ -70,62 +70,6 @@
+@@ -70,62 +70,7 @@
                      </execution>
                  </executions>
              </plugin>
@@ -62,14 +61,14 @@ index dfe902e6b9..6fe3382f27 100644
 -                    </execution>
 -                </executions>
 -            </plugin>
++            
              <plugin>
                  <groupId>com.google.code.maven-replacer-plugin</groupId>
                  <artifactId>replacer</artifactId>
 diff --git a/forge-gui-mobile-dev/pom.xml b/forge-gui-mobile-dev/pom.xml
-index 168ecba1dc..748dbf47b7 100644
 --- a/forge-gui-mobile-dev/pom.xml
 +++ b/forge-gui-mobile-dev/pom.xml
-@@ -60,57 +60,6 @@
+@@ -60,57 +60,7 @@
                      <target>17</target>
                  </configuration>
              </plugin>
@@ -124,6 +123,8 @@ index 168ecba1dc..748dbf47b7 100644
 -                    <!--extra-->
 -                </executions>
 -            </plugin>
++            
              <plugin>
                  <groupId>com.google.code.maven-replacer-plugin</groupId>
                  <artifactId>replacer</artifactId>
+
