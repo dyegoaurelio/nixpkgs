@@ -1,17 +1,23 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -i bash -p curl nix-update gnused python3
+#!nix-shell -i bash -p curl nix-update jq gnused python3
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+get_latest_version() {
+    local repo="$1"
+    curl -sfS https://api.github.com/repos/$repo/releases/latest | jq -r .tag_name
+}
+
 download_and_extract_source() {
-    local version="$1"
+    local repo="$1"
+    local version="$2"
     local temp_dir=$(mktemp -d)
-    
-    curl -L "https://github.com/Card-Forge/forge/archive/forge-$version.tar.gz" | tar -xz -C "$temp_dir"
-    
-    echo "$temp_dir/forge-forge-$version"
+
+    curl -sfSL "https://github.com/$repo/archive/$version.tar.gz" | tar -xz -C "$temp_dir"
+
+    echo $temp_dir
 }
 
 check_plugin_in_pom() {
@@ -73,9 +79,8 @@ update_patch() {
         echo "$patch_content" > "$SCRIPT_DIR/$patch_file"
         echo "Patch updated successfully!"
         rm -rf "$temp_dir"
-        exit 0
     else
-        echo "No $plugin_name found on any pom.xml files. Patch not updated."
+        echo "No $plugin_name found on any pom.xml file. Patch not updated."
         rm -rf "$temp_dir"
         exit 1
     fi
@@ -83,15 +88,12 @@ update_patch() {
 
 echo "Updating forge-mtg package..."
 
-nix-update --version-regex=forge-'(.*)' forge-mtg
+version=$(get_latest_version "Card-Forge/forge")
 
-# Get the potentially updated version
-version=$(grep 'version = ' "$SCRIPT_DIR/package.nix" | sed 's/.*"\(.*\)".*/\1/')
-
-source_dir=$(download_and_extract_source "$version")
+source_dir=$(download_and_extract_source "Card-Forge/forge" $version)/forge-$version
 
 update_patch "$source_dir" "launch4j-maven-plugin" "no-launch4j.patch"
 
 rm -rf "$(dirname "$source_dir")"
 
-echo "Update complete!"
+nix-update --version-regex=forge-'(.*)' forge-mtg
