@@ -55,7 +55,7 @@ update_patch() {
             cp "$pom_file" "$temp_patched"
             
             # Remove plugin sections using the dedicated script
-            python3 "$SCRIPT_DIR/erase-plugin.py" "$temp_patched" "$plugin_name"
+            python3 "$SCRIPT_DIR/erase-pom-plugin.py" "$temp_patched" "$plugin_name"
             
             # Generate diff for this file
             if ! cmp -s "$temp_original" "$temp_patched"; then
