@@ -61,6 +61,7 @@ update_patch() {
             if ! cmp -s "$temp_original" "$temp_patched"; then
                 local file_diff=$(diff -u "$temp_original" "$temp_patched" | sed "s|$temp_original|a/$relative_path|g; s|$temp_patched|b/$relative_path|g" | sed '1,2s/\t.*$//')
                 if [[ -n "$file_diff" ]]; then
+                    patch_content+='diff --git a/'"$relative_path"' b/'"$relative_path"''$'\n'
                     patch_content+="$file_diff"$'\n'
                 fi
             fi
