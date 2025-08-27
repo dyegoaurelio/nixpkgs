@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -i bash -p curl nix-update jq gnused python3
+#!nix-shell --pure -i bash -p curl cacert nix-update jq gnused python3 git
 
 set -euo pipefail
 
@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 get_latest_version() {
     local repo="$1"
-    curl -sfS https://api.github.com/repos/$repo/releases/latest | jq -r .tag_name
+    curl -sfS ${GITHUB_TOKEN:+-u ":$GITHUB_TOKEN"} https://api.github.com/repos/$repo/releases/latest | jq -r .tag_name
 }
 
 download_and_extract_source() {
