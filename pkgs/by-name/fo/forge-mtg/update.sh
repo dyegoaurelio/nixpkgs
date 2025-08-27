@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -i bash -p curl nix-update gnused
+#!nix-shell -i bash -p curl nix-update gnused python3
 
 set -euo pipefail
 
@@ -40,12 +40,8 @@ update_patch() {
             cp "$pom_file" "$temp_original"
             cp "$pom_file" "$temp_patched"
             
-            # Remove launch4j plugin sections using sed with proper handling
-            sed -i '/<plugin>/,/<\/plugin>/{
-                /<groupId>com\.akathist\.maven\.plugins\.launch4j<\/groupId>/,/<\/plugin>/{
-                    d
-                }
-            }' "$temp_patched"
+            # Remove launch4j plugin sections using the dedicated script
+            python3 "$SCRIPT_DIR/erase-plugin.py" "$temp_patched" "launch4j-maven-plugin"
             
             # Generate diff for this file
             if ! cmp -s "$temp_original" "$temp_patched"; then
