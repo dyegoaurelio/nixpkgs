@@ -341,8 +341,10 @@ let
   '';
 
   crossCabalFlags = [
-    "--with-ghc=${ghcCommand}"
-    "--with-ghc-pkg=${ghc.targetPrefix}ghc-pkg"
+    # With an empty `ghc.targetPrefix` a bare name would resolve to `nativeGhc`,
+    # which `stdenv` puts first on `PATH`.
+    "--with-ghc=${ghc}/bin/${ghcCommand}"
+    "--with-ghc-pkg=${ghc}/bin/${ghc.targetPrefix}ghc-pkg"
     "--with-gcc=${cc}"
   ]
   ++ optionals stdenv.hasCC [
